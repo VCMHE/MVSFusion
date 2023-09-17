@@ -1,0 +1,175 @@
+
+function [image] = main(ImgIr, ImgVis,ImgSuper,c)
+
+
+   src1=ImgSuper;
+     if size(src1, 3)~=1
+         src1  = rgb2gray(src1);
+     end
+%figure;imshow(ImgVis);    
+    A=cell(1,2);
+    A{1} = ImgVis;    %   Visible image
+    A{2} = ImgIr;     %   Infrared image
+
+    
+
+    Lrr_img=cell(1,2); %变成了1*3的数组
+    Sal_img=cell(1,2);
+    
+
+      sigma2 = 3;
+
+     parfor i = 1:2  %基本与for一样
+        Lrr_img{i} = interval_filtering(A{i},sigma2); %目前理解是Sal_img{i}每个存了4个细节层
+        Sal_img{i} = A{i}-Lrr_img{i};
+       % figure;imshow(Sal_img{i});
+        
+     end
+ 
+%      imwrite(Lrr_img{1},PreFusionPath);
+%     imwrite(Lrr_img{2},Weight1FusionPath);
+%     imwrite(Sal_img{1},Weight2FusionPath);
+%     imwrite(Sal_img{2},Weight3FusionPath);
+    %% Fusion of detail layers
+    gray_img = im2gray(A{1});
+
+% 计算灰度图像的平均亮度和标准差
+    mean_val = mean2(gray_img);
+%     std_val = std2(gray_img);
+
+% 计算图像的最大值和最小值
+%     max_val = max(gray_img(:));
+%     min_val = min(gray_img(:));
+weight1 = Visual_Weight_M1ap(Lrr_img{1});
+    weight2 = Visual_Weight_M1ap(Lrr_img{2});
+    %imwrite(gamma_corrected,PreFusionPath);
+%     imwrite(weight1,Weight1FusionPath);
+%     imwrite(weight2,Weight2FusionPath);
+% 判断图像是白天还是黑夜
+ if c == 0
+   %disp('这是一张黑夜的图片');
+    
+%     weight1 = Visual_Weight_Map(Lrr_img{1});
+%     weight2 = Visual_Weight_Map(Lrr_img{2});
+%     Lrr =(0.5+0.5*(weight1-weight2)).*Lrr_img{1} + (0.5+0.5*(weight2-weight1)).*Lrr_img{2};%融合结构
+    %figure;imshow(Lrr);
+    % 根据平均亮度计算伽马值
+    
+    gamma_value = mean_val*4;
+    %fprintf("%f",mean_val);
+    gamma_corrected = imadjust(Lrr_img{2}, [], [], gamma_value);
+    %disp('这是一张黑夜的图片');
+    weight1 = Visual_Weight_M1ap(Lrr_img{1});
+    weight2 = Visual_Weight_M1ap(Lrr_img{2});
+    %imwrite(gamma_corrected,PreFusionPath);
+%     imwrite(weight1,Weight1FusionPath);
+%     imwrite(weight2,Weight2FusionPath);
+%     imwrite(Sal_img{1},Weight2FusionPath);
+%     imwrite(Sal_img{2},Weight3FusionPath);
+    Lrr =(0.5+0.5*(weight1-weight2)).*Lrr_img{1} + (0.5+0.5*(weight2-weight1)).*gamma_corrected; 
+    [CAscore,CBscore] = Relevancy(A{1}, A{2});%, A{3});1是vis
+  
+    %[CAscore,CBscore] = Relevancy(A{1}, A{2}, A{3});
+    %figure;imshow(400*CAscore-400*CBscore
+    
+    %Weaken the interfering information and enhance the effective information
+    offset = 400*CAscore.*(0.5+0.5*(weight1-weight2))-400*CBscore.*((0.5+0.5*(weight2-weight1))) ;
+    %offset = 100*CAscore-100*CBscore;
+%      imwrite(CAscore,Weight1FusionPath);
+%        imwrite(CBscore,Weight2FusionPath);
+    
+ else
+     
+   
+% 判断图像是白天还是黑夜
+  
+%        gamma_value = 1/mean_val*4;
+%        gamma_corrected = imadjust(Lrr_img{2}, [], [], gamma_value);
+      %disp('这是一张白天的图片');
+      %$ weight1 = Visual_Weight_Map(Lrr_img{1});
+      
+       %weight1 = Visual_Weight_Map(Lrr_img{1});
+       weight2 = Visual_Weight_M1ap(Lrr_img{2});
+        %figure;imshow(weight2);
+       Lrr =(1-weight2).*Lrr_img{1} + (weight2).*Lrr_img{2};%融合结构
+      % imwrite(Lrr,Weight2FusionPath);
+       %figure;imshow(Lrr);
+       %[CAscore,CBscore] = Relevancy(A{1}, src1);
+     
+     [CAscore,CBscore] = Relevancy(A{1}, src1);
+       offset = 500*CAscore.*(1-weight2)-500*CBscore.*(weight2);
+      %offset = 100*CAscore-100*CBscore;
+%        imwrite(CAscore,Weight1FusionPath);
+%        imwrite(CBscore,Weight2FusionPath);
+       
+ end
+    %figure;imshow(weight1);
+    %figure;imshow(weight2);
+    %figure;imshow(Lrr_img{2});
+% r = 3;    % 滤波半径
+% a = 3;    % 全局方差
+% b = 0.5;  % 局部方差
+% 
+% [~,~,ch] = size(A);
+% % 判断是灰度图还是彩色图像
+% 
+%     T = bfilt_gray(A{2},r,a,b);
+% %g = bfilt_rgb(Sal_img{1},r,a,b);
+% 
+%   
+%     g = bfilt_gray(Sal_img{2},r,a,b);
+%g = bfilt_rgb(Sal_img{1},r,a,b);
+
+    %Lrr = Lrr_img{3};  %预融合图像的Lrr_img基层
+    %figure;imshow(Lrr);
+   % n = mean(mean(T));
+%    [CAscore,CBscore] = Relevancy(A{1}, src1);%, A{3});
+%   
+%     %[CAscore,CBscore] = Relevancy(A{1}, A{2}, A{3});
+%     %figure;imshow(400*CAscore-400*CBscore
+%     
+%     %Weaken the interfering information and enhance the effective information
+%     offset = 1000*CAscore.*(0.5+0.5*(weight1-weight2))-1000*CBscore.*((0.5+0.5*(weight2-weight1))) ; 
+    %offset = 1000*CAscore.*(0.5+0.5*(weight1-weight2))-1000*CBscore.*((0.5+0.5*(weight2-weight1))) ; 
+    %figure;imshow(1-weight2);
+    %offset = 100*CAscore-100*CBscore ; 
+    %offset = 100*CAscore-100*CBscore ;
+    %offset = 2*CAscore-2*CBscore ; 
+%     map=abs(10*CAscore>10*CBscore);
+%     Sal1=(Sal_img{1}.*map+~map.*Sal_img{2}); 
+     Weight = 0.5 + offset;
+     Weight(Weight>1) = 1;
+     Weight(Weight<0) = 0;
+    
+%     imwrite(mat2gray(Weight),Weight1FusionPath);
+     %figure;imshow(Weight);
+%     SalImg_A = g;% Visible image datail
+%     SalImg_B = Sal_img{2};% Infared image datail
+    %Sal1 = detail_fusion( Sal_img{1}, Sal_img{2}, Weight );
+    %Sal1 = Sal_img{1}.*(Weight)+Sal_img{2}.*((1-Weight));
+    %Sal2 =(0.5+0.5*(weight1-weight2)).*Sal_img{1} + (0.5+0.5*(weight2-weight1)).*Sal_img{2};
+    %Sal1 = Sal_img{1}.*(Weight).*(1-weight2+0.5)+Sal_img{2}.*((1-Weight).*(weight2+0.5));%提出了同时考虑纹理和像素强度的算法
+    Sal1 = Sal_img{1}.*(Weight)+Sal_img{2}.*((1-Weight));%提出了同时考虑纹理和像素强度的算法
+
+%     www = Lrr_img{1}-Lrr_img{2};
+%     wwwT = 0.5 + www;
+%     wwwT(wwwT>1) = 1;
+%     wwwT(wwwT<0) = 0;
+%     figure;imshow(wwwT);
+%     imwrite(mat2gray(wwwT),Weight2FusionPath);
+    %Sal = (Sal1+Sal2)/2;
+    %Sal = ((1-Lrr_img{1}.*Lrr_img{1}.*Lrr_img{1}).*Sal1+Sal2.*(Lrr_img{1}.*Lrr_img{1}.*Lrr_img{1}));
+    
+    
+    %% Inverse transformation
+    image = Lrr+Sal1; %基层和细节层融合
+  
+% % % %figure;imshow(fusion);
+%    Final_result1=cat(3,fusion,IR0_CB,IR0_CR);
+% Final_result= ycbcr2rgb(Final_result1);
+
+% imwrite(Final_result,FusionPath);
+    %imwrite(fusion,FusionPath);
+    %imwrite(Weight,PreFusionPath);
+
+    end
